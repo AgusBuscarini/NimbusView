@@ -1,7 +1,8 @@
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from "react-leaflet";
-import { useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import * as L from "leaflet"
-import type { LeafletMouseEvent } from "leaflet";
+import type { LeafletMouseEvent, Marker as LeafletMarker } from "leaflet";
+import { getCurrentWeather } from "../../services/WeatherService";
 
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
 import markerIcon from "leaflet/dist/images/marker-icon.png";
@@ -20,15 +21,27 @@ type SelectedPoint = {
   lon: number;
 };
 
+type CurrentWeather = {
+  locationName: string;
+  lat: number;
+  lon: number;
+  temperature: number;
+  feelsLike: number;
+  humidity: number;
+  windSpeed: number;
+  description: string;
+  icon: string;
+}
+
 function MapClickHandler({
-  onSelectPoint,
+  onMapClick,
 }: {
-  onSelectPoint: (point: SelectedPoint) => void;
+  onMapClick: (lat: number, lon: number) => void;
 }) {
   useMapEvents({
     click(event: LeafletMouseEvent) {
       const { lat, lng } = event.latlng;
-      onSelectPoint({ lat, lon: lng });
+      onMapClick(lat, lng);
     },
   });
 
@@ -37,6 +50,35 @@ function MapClickHandler({
 
 export default function WeatherMap() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
+  const [weather, setWeather] = useState<CurrentWeather | null>(null);
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const markerRef = useRef<LeafletMarker | null>(null);
+
+  useEffect(() => {
+    if (markerRef.current) {
+      setTimeout(() => {
+        markerRef.current?.openPopup();
+      }, 0);
+    }
+  }, [selectedPoint, weather, error, loading]);
+
+  const handleMapClick = async (lat: number, lon: number) => {
+    setSelectedPoint({ lat, lon });
+    setLoading(true);
+    setError(null);
+    setWeather(null);
+
+    try {
+      const data = await getCurrentWeather(lat, lon);
+      setWeather(data);
+    } catch (err) {
+      setError("No se pudo obtener el clima");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <MapContainer
@@ -49,18 +91,29 @@ export default function WeatherMap() {
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <MapClickHandler onSelectPoint={setSelectedPoint} />
+      <MapClickHandler onMapClick={handleMapClick} />
 
       {selectedPoint && (
-        <Marker position={[selectedPoint.lat, selectedPoint.lon]}>
+        <Marker position={[selectedPoint.lat, selectedPoint.lon]} ref={markerRef}>
           <Popup>
-            <div>
-              <strong>Punto seleccionado</strong>
-              <br />
-              Lat: {selectedPoint.lat.toFixed(4)}
-              <br />
-              Lon: {selectedPoint.lon.toFixed(4)}
-            </div>
+            {loading && <p>Cargando clima...</p>}
+            {error && <p>{error}</p>}
+
+            {!loading && !error && weather && (
+              <div>
+                <strong>{weather.locationName}</strong>
+                <br />
+                Temperatura: {weather.temperature}°C
+                <br />
+                Sensación térmica: {weather.feelsLike}°C
+                <br />
+                Humedad: {weather.humidity}%
+                <br />
+                Viento: {weather.windSpeed} m/s
+                <br />
+                Estado: {weather.description}
+              </div>
+            )}
           </Popup>
         </Marker>
       )}
