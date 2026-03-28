@@ -1,6 +1,6 @@
 import type { CurrentWeather } from '../../services/WeatherService'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Particles, { initParticlesEngine } from '@tsparticles/react'
 import { loadSlim } from '@tsparticles/slim'
 import { getWeatherTheme } from './weatherTheme'
@@ -21,6 +21,7 @@ interface WeatherBottomPanelProps {
   loading: boolean
   error: string | null
   onClose: () => void
+  onHeightChange?: (height: number) => void
 }
 
 interface RainDrop {
@@ -46,8 +47,10 @@ export default function WeatherBottomPanel({
   loading,
   error,
   onClose,
+  onHeightChange,
 }: WeatherBottomPanelProps) {
   const [particlesReady, setParticlesReady] = useState(false)
+  const panelRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     initParticlesEngine(async (engine) => {
@@ -114,12 +117,43 @@ export default function WeatherBottomPanel({
     return drops
   }, [showRainLayers, theme.key, theme.period])
 
+  useEffect(() => {
+    if (!selectedPoint) {
+      onHeightChange?.(0)
+      return
+    }
+
+    const node = panelRef.current
+
+    if (!node) {
+      return
+    }
+
+    const reportHeight = () => {
+      onHeightChange?.(Math.ceil(node.getBoundingClientRect().height))
+    }
+
+    reportHeight()
+
+    const observer = new ResizeObserver(() => {
+      reportHeight()
+    })
+
+    observer.observe(node)
+
+    return () => {
+      observer.disconnect()
+      onHeightChange?.(0)
+    }
+  }, [selectedPoint, onHeightChange, themeKey, loading, error, weather])
+
   if (!selectedPoint) {
     return null
   }
 
   return (
     <motion.section
+      ref={panelRef}
       className="weather-bottom-panel"
       aria-live="polite"
       initial={{ y: 44, opacity: 0 }}
