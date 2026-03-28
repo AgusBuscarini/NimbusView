@@ -47,6 +47,8 @@ public class WeatherService : IWeatherService
             FeelsLike = data.Main.FeelsLike,
             Humidity = data.Main.Humidity,
             WindSpeed = data.Wind.Speed,
+            WeatherId = weather?.Id ?? 0,
+            Main = weather?.Main ?? string.Empty,
             Description = weather?.Description ?? string.Empty,
             Icon = weather?.Icon ?? string.Empty,
         };

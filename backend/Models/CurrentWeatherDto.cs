@@ -9,6 +9,8 @@ public class CurrentWeatherDto
     public double FeelsLike { get; set; }
     public int Humidity { get; set; }
     public double WindSpeed { get; set; }
+    public int WeatherId { get; set; }
+    public string Main { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public string Icon { get; set; } = string.Empty;
 }
