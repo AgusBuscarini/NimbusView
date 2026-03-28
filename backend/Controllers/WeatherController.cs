@@ -40,4 +40,30 @@ public class WeatherController : ControllerBase
             return StatusCode(502, new { message = ex.Message });
         }
     }
+
+    [HttpGet("forecast")]
+    public async Task<ActionResult<WeatherForecastDto>> GetForecast(
+        [FromQuery] double lat,
+        [FromQuery] double lon
+    )
+    {
+        if (lat < -90 || lat > 90)
+        {
+            return BadRequest("Latitud debe de estar entre -90 y 90");
+        }
+        if (lon < -180 || lon > 180)
+        {
+            return BadRequest("Longitud debe de estar entre -180 y 180");
+        }
+
+        try
+        {
+            var result = await _weatherService.GetForecastDto(lat, lon);
+            return Ok(result);
+        }
+        catch (ApplicationException ex)
+        {
+            return StatusCode(502, new { message = ex.Message });
+        }
+    }
 }

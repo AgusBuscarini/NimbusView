@@ -4,7 +4,9 @@ import * as L from 'leaflet'
 import type { LeafletMouseEvent } from 'leaflet'
 import {
   getCurrentWeather,
+  getWeatherForecast,
   type CurrentWeather,
+  type WeatherForecast,
 } from '../../services/WeatherService'
 import WeatherBottomPanel from './WeatherBottomPanel'
 import MapSearchBar from './MapSearchBar'
@@ -82,8 +84,10 @@ function MapFlyTo({ target }: { target: FlyToTarget }) {
 export default function WeatherMap() {
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null)
   const [weather, setWeather] = useState<CurrentWeather | null>(null)
+  const [forecast, setForecast] = useState<WeatherForecast | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [forecastError, setForecastError] = useState<string | null>(null)
   const [flyToTarget, setFlyToTarget] = useState<FlyToTarget>(null)
   const [userLocation, setUserLocation] = useState<SelectedPoint | null>(null)
   const [locationPermission, setLocationPermission] = useState<LocationPermissionState>('unknown')
@@ -97,16 +101,28 @@ export default function WeatherMap() {
     setSelectedPoint(safePoint)
     setLoading(true)
     setError(null)
+    setForecastError(null)
     setWeather(null)
+    setForecast(null)
 
-    try {
-      const data = await getCurrentWeather(safePoint.lat, safePoint.lon)
-      setWeather(data)
-    } catch {
-      setError('No se pudo obtener el clima')
-    } finally {
-      setLoading(false)
+    const [currentResult, forecastResult] = await Promise.allSettled([
+      getCurrentWeather(safePoint.lat, safePoint.lon),
+      getWeatherForecast(safePoint.lat, safePoint.lon),
+    ])
+
+    if (currentResult.status === 'fulfilled') {
+      setWeather(currentResult.value)
+    } else {
+      setError('No se pudo obtener el clima actual')
     }
+
+    if (forecastResult.status === 'fulfilled') {
+      setForecast(forecastResult.value)
+    } else {
+      setForecastError('No se pudo obtener el pronostico')
+    }
+
+    setLoading(false)
   }, [])
 
   const centerMapAt = useCallback((lat: number, lon: number, zoom = 10) => {
@@ -211,8 +227,10 @@ export default function WeatherMap() {
   const handleClosePanel = () => {
     setSelectedPoint(null)
     setWeather(null)
+    setForecast(null)
     setLoading(false)
     setError(null)
+    setForecastError(null)
     setPanelHeight(0)
   }
 
@@ -268,10 +286,13 @@ export default function WeatherMap() {
       )}
 
       <WeatherBottomPanel
+        key={selectedPoint ? `${selectedPoint.lat}-${selectedPoint.lon}` : 'weather-panel-empty'}
         selectedPoint={selectedPoint}
         weather={weather}
+        forecast={forecast}
         loading={loading}
         error={error}
+        forecastError={forecastError}
         onClose={handleClosePanel}
         onHeightChange={setPanelHeight}
       />
