@@ -31,11 +31,7 @@ builder.Services.AddCors(options =>
         "frontend",
         policy =>
         {
-            var allowedOrigins =
-                builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
-                ?? new[] { "http://localhost:5173" };
-
-            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+            policy.WithOrigins("https://nimbus-view.vercel.app").AllowAnyHeader().AllowAnyMethod();
         }
     );
 });
@@ -48,10 +44,10 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
+app.UseHttpsRedirection();
+app.UseRouting();
 app.UseCors("frontend");
 app.UseAuthorization();
 app.MapControllers();
-
-app.UseHttpsRedirection();
 
 app.Run();
