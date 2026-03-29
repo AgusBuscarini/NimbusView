@@ -31,7 +31,11 @@ builder.Services.AddCors(options =>
         "frontend",
         policy =>
         {
-            policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+            var allowedOrigins =
+                builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
+                ?? new[] { "http://localhost:5173" };
+
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
         }
     );
 });

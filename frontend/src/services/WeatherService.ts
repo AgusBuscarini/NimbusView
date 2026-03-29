@@ -48,7 +48,7 @@ interface RadarFramesResponse {
   frames: RadarFrame[]
 }
 
-const API_BASE_URL = 'http://localhost:5073/api'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5073/api'
 
 export async function getCurrentWeather(lat: number, lon: number): Promise<CurrentWeather> {
   const response = await fetch(`${API_BASE_URL}/weather/current?lat=${lat}&lon=${lon}`)
