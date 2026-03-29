@@ -307,6 +307,49 @@
   opacity: 0.76;
 }
 
+.weather-bottom-panel__storm-alert {
+  position: relative;
+  z-index: 10;
+  margin: 0 0 0.8rem;
+  border-radius: 0.84rem;
+  border: 1px solid color-mix(in srgb, var(--weather-card-border) 90%, transparent);
+  background: color-mix(in srgb, var(--weather-card-bg) 88%, transparent);
+  padding: 0.55rem 0.66rem;
+}
+
+.weather-bottom-panel__storm-title,
+.weather-bottom-panel__storm-message {
+  margin: 0;
+}
+
+.weather-bottom-panel__storm-title {
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.weather-bottom-panel__storm-message {
+  margin-top: 0.22rem;
+  font-size: 0.78rem;
+  line-height: 1.32;
+}
+
+.weather-bottom-panel__storm-alert--alto {
+  border-color: rgba(255, 150, 150, 0.8);
+  background: color-mix(in srgb, rgba(255, 132, 132, 0.32) 72%, var(--weather-card-bg));
+}
+
+.weather-bottom-panel__storm-alert--medio {
+  border-color: rgba(255, 209, 128, 0.8);
+  background: color-mix(in srgb, rgba(255, 198, 103, 0.24) 64%, var(--weather-card-bg));
+}
+
+.weather-bottom-panel__storm-alert--bajo {
+  border-color: rgba(170, 212, 255, 0.7);
+  background: color-mix(in srgb, rgba(128, 198, 255, 0.2) 52%, var(--weather-card-bg));
+}
+
 .weather-bottom-panel__grid {
   position: relative;
   z-index: 10;

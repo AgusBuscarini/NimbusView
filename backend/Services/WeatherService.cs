@@ -1,18 +1,29 @@
 using backend.Models;
 using backend.Options;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 
 namespace backend.Services;
 
 public class WeatherService : IWeatherService
 {
+    private const string RainViewerMapsUrl = "https://api.rainviewer.com/public/weather-maps.json";
+    private const string RainViewerTilesHost = "https://tilecache.rainviewer.com";
+    private static readonly TimeSpan RadarFramesCacheDuration = TimeSpan.FromMinutes(3);
+
     private readonly HttpClient _httpClient;
+    private readonly IMemoryCache _memoryCache;
     private readonly OpenWeatherOptions _options;
 
-    public WeatherService(HttpClient httpClient, IOptions<OpenWeatherOptions> options)
+    public WeatherService(
+        HttpClient httpClient,
+        IOptions<OpenWeatherOptions> options,
+        IMemoryCache memoryCache
+    )
     {
         _httpClient = httpClient;
         _options = options.Value;
+        _memoryCache = memoryCache;
     }
 
     public async Task<CurrentWeatherDto> GetCurrentWeatherDto(double lat, double lon)
@@ -87,6 +98,7 @@ public class WeatherService : IWeatherService
                 {
                     ForecastTime = DateTimeOffset.FromUnixTimeSeconds(entry.Dt).ToOffset(cityOffset),
                     Temperature = entry.Main.Temp,
+                    WeatherId = weather?.Id ?? 0,
                     Description = weather?.Description ?? string.Empty,
                     Icon = weather?.Icon ?? string.Empty,
                     PrecipitationProbability = Math.Round(entry.Pop * 100, 1),
@@ -136,5 +148,153 @@ public class WeatherService : IWeatherService
             Next24Hours = next24Hours,
             Next5Days = next5Days,
         };
+    }
+
+    public async Task<(byte[] Content, string ContentType)> GetLayerTileAsync(
+        string layer,
+        int z,
+        int x,
+        int y,
+        CancellationToken cancellationToken
+    )
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            throw new ApplicationException("No hay API key configurada para OpenWeather");
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.TileBaseUrl))
+        {
+            throw new ApplicationException("No hay TileBaseUrl configurada para OpenWeather");
+        }
+
+        var normalizedBaseUrl = _options.TileBaseUrl.TrimEnd('/');
+        var url = $"{normalizedBaseUrl}/map/{layer}/{z}/{x}/{y}.png?appid={_options.ApiKey}";
+        var response = await _httpClient.GetAsync(url, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new ApplicationException(
+                $"Error consultando tiles de OpenWeather: {(int)response.StatusCode} - {errorBody}"
+            );
+        }
+
+        var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/png";
+
+        return (content, contentType);
+    }
+
+    public async Task<RadarFramesDto> GetRadarFramesAsync(CancellationToken cancellationToken)
+    {
+        if (_memoryCache.TryGetValue<RadarFramesDto>("radar-frames", out var cachedFrames)
+            && cachedFrames is not null)
+        {
+            return cachedFrames;
+        }
+
+        var maps = await _httpClient.GetFromJsonAsync<RainViewerMapsResponse>(
+            RainViewerMapsUrl,
+            cancellationToken
+        );
+
+        if (maps?.Radar is null)
+        {
+            throw new ApplicationException("No se pudo leer el indice de radar");
+        }
+
+        var frames = (maps.Radar.Past ?? [])
+            .Concat(maps.Radar.Nowcast ?? [])
+            .Where(frame => frame.Time > 0 && !string.IsNullOrWhiteSpace(frame.Path))
+            .GroupBy(frame => frame.Time)
+            .Select(group => group.First())
+            .OrderBy(frame => frame.Time)
+            .ToList();
+
+        if (frames.Count == 0)
+        {
+            throw new ApplicationException("No hay frames de radar disponibles");
+        }
+
+        var dto = new RadarFramesDto
+        {
+            Frames = frames
+                .Select(frame => new RadarFrameDto
+                {
+                    Id = frame.Time,
+                    Timestamp = DateTimeOffset.FromUnixTimeSeconds(frame.Time),
+                })
+                .ToList(),
+        };
+
+        var lookup = frames.ToDictionary(frame => frame.Time, frame => frame.Path.Trim());
+        _memoryCache.Set(
+            "radar-frames",
+            dto,
+            new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = RadarFramesCacheDuration }
+        );
+        _memoryCache.Set(
+            "radar-lookup",
+            lookup,
+            new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = RadarFramesCacheDuration }
+        );
+
+        return dto;
+    }
+
+    public async Task<(byte[] Content, string ContentType)> GetRadarTileAsync(
+        long frameId,
+        int z,
+        int x,
+        int y,
+        CancellationToken cancellationToken
+    )
+    {
+        if (!_memoryCache.TryGetValue<Dictionary<long, string>>("radar-lookup", out var frameLookup)
+            || frameLookup is null)
+        {
+            await GetRadarFramesAsync(cancellationToken);
+            frameLookup = _memoryCache.Get<Dictionary<long, string>>("radar-lookup");
+        }
+
+        if (frameLookup is null || !frameLookup.TryGetValue(frameId, out var framePath))
+        {
+            throw new ApplicationException("Frame de radar no encontrado");
+        }
+
+        var normalizedPath = framePath.StartsWith('/') ? framePath : $"/{framePath}";
+        var tileUrl = $"{RainViewerTilesHost}{normalizedPath}/256/{z}/{x}/{y}/2/1_1.png";
+        var response = await _httpClient.GetAsync(tileUrl, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new ApplicationException(
+                $"Error consultando tile de radar: {(int)response.StatusCode} - {errorBody}"
+            );
+        }
+
+        var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+        var contentType = response.Content.Headers.ContentType?.MediaType ?? "image/png";
+
+        return (content, contentType);
+    }
+
+    private sealed class RainViewerMapsResponse
+    {
+        public RainViewerRadarSection Radar { get; set; } = new();
+    }
+
+    private sealed class RainViewerRadarSection
+    {
+        public List<RainViewerFrame>? Past { get; set; }
+        public List<RainViewerFrame>? Nowcast { get; set; }
+    }
+
+    private sealed class RainViewerFrame
+    {
+        public long Time { get; set; }
+        public string Path { get; set; } = string.Empty;
     }
 }

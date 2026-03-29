@@ -34,6 +34,11 @@ interface RainDrop {
   opacity: number
 }
 
+interface StormRiskInfo {
+  level: 'alto' | 'medio' | 'bajo'
+  message: string
+}
+
 function pseudoRandom(seed: number): number {
   const value = Math.sin(seed * 12.9898) * 43758.5453
   return value - Math.floor(value)
@@ -68,6 +73,55 @@ function formatTemperature(value: number): string {
 
 function getIconUrl(icon: string): string {
   return `https://openweathermap.org/img/wn/${icon}@2x.png`
+}
+
+function isThunderstormWeatherId(weatherId: number): boolean {
+  return weatherId >= 200 && weatherId < 300
+}
+
+function getStormRisk(weather: CurrentWeather | null, forecast: WeatherForecast | null): StormRiskInfo | null {
+  if (!weather) {
+    return null
+  }
+
+  const nextHours = forecast?.next24Hours.slice(0, 4) ?? []
+  const thunderstormNow = isThunderstormWeatherId(weather.weatherId)
+  const thunderstormSoon = nextHours.some((item) => isThunderstormWeatherId(item.weatherId))
+  const heavyRainSoon = nextHours.some((item) => item.precipitationProbability >= 70)
+  const moderateRainSoon = nextHours.some((item) => item.precipitationProbability >= 45)
+
+  if (thunderstormNow) {
+    return {
+      level: 'alto',
+      message: 'Tormenta activa en este momento. Evita zonas abiertas.',
+    }
+  }
+
+  if (thunderstormSoon) {
+    return {
+      level: 'alto',
+      message: 'Probable tormenta electrica en las proximas horas.',
+    }
+  }
+
+  if (heavyRainSoon) {
+    return {
+      level: 'medio',
+      message: 'Lluvia intensa esperada. Conviene seguir el radar.',
+    }
+  }
+
+  if (moderateRainSoon) {
+    return {
+      level: 'bajo',
+      message: 'Posibles chaparrones. Condiciones inestables.',
+    }
+  }
+
+  return {
+    level: 'bajo',
+    message: 'Sin senales fuertes de tormenta en el corto plazo.',
+  }
 }
 
 export default function WeatherBottomPanel({
@@ -116,6 +170,7 @@ export default function WeatherBottomPanel({
   const hasDailyForecast = (forecast?.next5Days.length ?? 0) > 0
   const showHourlyForecast = panelStep >= 1
   const showDailyForecast = panelStep >= 2
+  const stormRisk = useMemo(() => getStormRisk(weather, forecast), [weather, forecast])
 
   const handlePanelWheel = (event: React.WheelEvent<HTMLElement>) => {
     const container = event.currentTarget
@@ -355,6 +410,13 @@ export default function WeatherBottomPanel({
 
           {!loading && !error && weather && (
             <>
+              {stormRisk && (
+                <div className={`weather-bottom-panel__storm-alert weather-bottom-panel__storm-alert--${stormRisk.level}`}>
+                  <p className="weather-bottom-panel__storm-title">Riesgo de tormenta: {stormRisk.level}</p>
+                  <p className="weather-bottom-panel__storm-message">{stormRisk.message}</p>
+                </div>
+              )}
+
               <motion.div
                 className="weather-bottom-panel__grid"
                 initial="hidden"

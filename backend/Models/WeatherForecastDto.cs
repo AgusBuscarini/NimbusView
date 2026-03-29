@@ -13,6 +13,7 @@ public class HourlyForecastDto
 {
     public DateTimeOffset ForecastTime { get; set; }
     public double Temperature { get; set; }
+    public int WeatherId { get; set; }
     public string Description { get; set; } = string.Empty;
     public string Icon { get; set; } = string.Empty;
     public double PrecipitationProbability { get; set; }

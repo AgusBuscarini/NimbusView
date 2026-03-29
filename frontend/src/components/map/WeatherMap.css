@@ -27,6 +27,143 @@
   transition: transform 160ms ease, background-color 160ms ease, opacity 160ms ease;
 }
 
+.weather-map-shell__layers {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  z-index: 1360;
+  display: grid;
+  justify-items: end;
+  gap: 0.5rem;
+}
+
+.weather-map-shell__layers-trigger {
+  width: 46px;
+  height: 46px;
+  border: 1px solid rgba(255, 255, 255, 0.64);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  color: #1f2f45;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  box-shadow:
+    0 10px 24px rgba(10, 24, 44, 0.22),
+    0 3px 8px rgba(10, 24, 44, 0.14);
+  transition: transform 160ms ease, background-color 160ms ease;
+}
+
+.weather-map-shell__layers-trigger svg {
+  width: 22px;
+  height: 22px;
+  fill: currentColor;
+}
+
+.weather-map-shell__layers-trigger:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.weather-map-shell__layers-trigger.is-open {
+  background: rgba(255, 255, 255, 1);
+}
+
+.weather-map-shell__layers-panel {
+  width: min(88vw, 290px);
+  border-radius: 0.95rem;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  background: rgba(19, 31, 49, 0.9);
+  color: rgba(247, 251, 255, 0.95);
+  backdrop-filter: blur(14px) saturate(110%);
+  box-shadow:
+    0 16px 34px rgba(10, 24, 44, 0.3),
+    0 4px 12px rgba(10, 24, 44, 0.2);
+  padding: 0.72rem;
+}
+
+.weather-map-shell__layers-title {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.9;
+}
+
+.weather-map-shell__layer-list {
+  margin-top: 0.48rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.36rem;
+}
+
+.weather-map-shell__layer-chip {
+  border: 1px solid rgba(202, 221, 243, 0.42);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 620;
+  padding: 0.32rem 0.58rem;
+  cursor: pointer;
+  transition: background-color 160ms ease, border-color 160ms ease;
+}
+
+.weather-map-shell__layer-chip.is-active {
+  border-color: rgba(160, 224, 255, 0.86);
+  background: rgba(79, 171, 214, 0.35);
+}
+
+.weather-map-shell__opacity-control {
+  display: grid;
+  gap: 0.28rem;
+  margin-top: 0.6rem;
+  font-size: 0.74rem;
+  font-weight: 610;
+}
+
+.weather-map-shell__opacity-control input {
+  accent-color: #7ec9f1;
+}
+
+.weather-map-shell__radar-tools {
+  margin-top: 0.66rem;
+  border-top: 1px solid rgba(199, 220, 246, 0.26);
+  padding-top: 0.62rem;
+}
+
+.weather-map-shell__radar-title {
+  margin: 0;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.weather-map-shell__radar-actions {
+  margin-top: 0.4rem;
+  display: flex;
+  gap: 0.36rem;
+}
+
+.weather-map-shell__radar-actions button {
+  border: 1px solid rgba(200, 222, 249, 0.42);
+  border-radius: 0.55rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: inherit;
+  font-size: 0.75rem;
+  font-weight: 620;
+  padding: 0.3rem 0.54rem;
+  cursor: pointer;
+}
+
+.weather-map-shell__radar-status {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  opacity: 0.86;
+}
+
 .weather-map-shell__locate:hover {
   transform: translateY(-1px);
   background: rgba(255, 255, 255, 0.98);
@@ -62,7 +199,35 @@
   backdrop-filter: blur(10px) saturate(110%);
 }
 
+.weather-map-shell__layer-toast {
+  position: absolute;
+  right: 1rem;
+  bottom: calc(var(--weather-panel-height) + 7.2rem + env(safe-area-inset-bottom));
+  z-index: 1360;
+  max-width: min(82vw, 320px);
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 245, 199, 0.5);
+  background: rgba(66, 45, 14, 0.9);
+  color: rgba(255, 247, 225, 0.96);
+  padding: 0.52rem 0.7rem;
+  font-size: 0.78rem;
+  line-height: 1.3;
+  box-shadow:
+    0 10px 24px rgba(10, 24, 44, 0.24),
+    0 3px 8px rgba(10, 24, 44, 0.16);
+  backdrop-filter: blur(10px) saturate(110%);
+}
+
 @media (max-width: 760px) {
+  .weather-map-shell__layers {
+    top: 0.8rem;
+    right: 0.8rem;
+  }
+
+  .weather-map-shell__layers-panel {
+    width: min(92vw, 274px);
+  }
+
   .weather-map-shell__locate {
     right: 0.8rem;
   }
@@ -70,5 +235,10 @@
   .weather-map-shell__location-toast {
     right: 0.8rem;
     max-width: min(86vw, 260px);
+  }
+
+  .weather-map-shell__layer-toast {
+    right: 0.8rem;
+    max-width: min(86vw, 280px);
   }
 }

@@ -13,6 +13,7 @@ builder.Services.Configure<OpenWeatherOptions>(
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddMemoryCache();
 
 builder.Services.AddHttpClient<IWeatherService, WeatherService>(
     (sp, client) =>
