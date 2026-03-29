@@ -1,0 +1,16 @@
+# .NET
+backend/bin/
+backend/obj/
+
+# Node / Bun
+frontend/node_modules/
+frontend/dist/
+frontend/.next/
+
+# editor
+.vscode/
+.idea/
+
+# env
+.env
+appsettings.Development.json
